@@ -1,0 +1,101 @@
+run:
+  timeout: 5m
+  tests: false
+  go: '1.23'
+
+linters:
+  disable-all: true
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - containedctx
+    - contextcheck
+    - cyclop
+    - decorder
+    # - depguard
+    - dogsled
+    # - dupl
+    - durationcheck
+    - errcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - exhaustive
+    # - exhaustruct
+    - copyloopvar
+    - forcetypeassert
+    - funlen
+    # - gci
+    - gocheckcompilerdirectives
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - gocyclo
+    - err113
+    - gofmt
+    # - gofumpt
+    - goimports
+    ### - mnd
+    - gomoddirectives
+    - gomodguard
+    - goprintffuncname
+    # - gosec
+    - gosimple
+    - gosmopolitan
+    - govet
+    - grouper
+    - ineffassign
+    - interfacebloat
+    # - ireturn
+    # - lll
+    - loggercheck
+    - maintidx
+    - makezero
+    - mirror
+    - misspell
+    - musttag
+    - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    - noctx
+    - nolintlint
+    - nonamedreturns
+    - paralleltest
+    - prealloc
+    - predeclared
+    - promlinter
+    - reassign
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - staticcheck
+    - stylecheck
+    - tagalign
+    - tagliatelle
+    - usetesting
+    - testableexamples
+    - testpackage
+    - thelper
+    - tparallel
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    # - varnamelen
+    - wastedassign
+    - whitespace
+    # - wrapcheck
+    # - wsl
+    - zerologlint
+
+linters-settings:
+  # mnd:
+  #   ignored-functions:
+  #     - '^v\.SetDefault'
+  funlen:
+    # we have lots of comments so keep this pretty high as it does count comment lines
+    lines: 85
