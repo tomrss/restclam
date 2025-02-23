@@ -1,0 +1,6 @@
+bin/
+build/
+.idea/
+.vscode/
+.dir-locals.el
+*.out
