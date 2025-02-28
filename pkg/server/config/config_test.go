@@ -16,7 +16,7 @@ func TestLoadConfigEnv(t *testing.T) {
 	t.Setenv("RESTCLAM_SERVER_PORT", "9090")
 
 	// execute
-	config, err := loadConfig(readNop)
+	config, err := loadConfig(readNop, readNop)
 	if err != nil {
 		t.Fatalf("LoadConfig error: %v", err)
 	}
@@ -28,10 +28,10 @@ func TestLoadConfigEnv(t *testing.T) {
 }
 
 func TestLoadConfigDefaults(t *testing.T) {
-	// no preparation, load defaults
+	// no preparation, load embedded defaults
 
 	// execute
-	config, err := loadConfig(readNop)
+	config, err := loadConfig(readDefaults, readNop)
 	if err != nil {
 		t.Fatalf("LoadConfig error: %v", err)
 	}
@@ -58,7 +58,7 @@ server:
 	}
 
 	// execute
-	config, err := loadConfig(readFunc)
+	config, err := loadConfig(readNop, readFunc)
 	if err != nil {
 		t.Fatalf("LoadConfig error: %v", err)
 	}
@@ -67,6 +67,40 @@ server:
 	assert.Equal(t, "/run/clamav/clamd.sock", config.Clam.Address, "Clamd address")
 	assert.Equal(t, "error", config.Log.Level, "Log level from default")
 	assert.Equal(t, 7070, config.Server.Port, "Server port from default")
+}
+
+func TestUnmarshal(t *testing.T) {
+	// prepare
+	t.Setenv("RESTCLAM_CLAM_HEARTBEATINTERVAL", "12s")
+	t.Setenv("RESTCLAM_LOG_LEVEL", "warn")
+	t.Setenv("RESTCLAM_SERVER_HOST", "127.0.0.1")
+	t.Setenv("RESTCLAM_ENVIRONMENT", "test")
+
+	readFunc := func(v *viper.Viper) error {
+		return readFromFileMock(`
+clam:
+  network: unix
+  address: /run/clamav/clamd.sock
+log:
+  level: error
+server:
+  port: 7070
+`, v)
+	}
+	// execute
+	config, err := loadConfig(readNop, readFunc)
+	if err != nil {
+		t.Fatalf("LoadConfig error: %v", err)
+	}
+
+	// assert
+	assert.Equal(t, "test", config.Environment, "Environment")
+	assert.Equal(t, "unix", config.Clam.Network, "Clamd network")
+	assert.Equal(t, "/run/clamav/clamd.sock", config.Clam.Address, "Clamd address")
+	assert.Equal(t, "warn", config.Log.Level, "Log level")
+	assert.Equal(t, "127.0.0.1", config.Server.Host, "Server host")
+	assert.Equal(t, 7070, config.Server.Port, "Server port")
+	assert.Equal(t, 12 * time.Second, config.Clam.HeartbeatInterval, "Heartbeat interval")
 }
 
 // helpers

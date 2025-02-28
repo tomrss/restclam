@@ -1,0 +1,43 @@
+# Configuration defaults
+#
+# They can be overridden by config.yaml or env
+# variables.  Env variables can be specified with RESTCLAM_ prefix
+# like these examples:
+#  - server.host     -> RESTCLAM_SERVER_HOST
+#  - clam.maxWorkers -> RESTCLAM_CLAM_MAXWORKERS
+
+server:
+  host: 0.0.0.0
+  port: 8080
+  readTimeout: 15s
+  writeTimeout: 15s
+  idleTimeout: 60s
+  shutdownTimeout: 30s
+
+log:
+  level: debug
+  json: false
+  concise: true
+  LogRequests: false
+
+cors:
+  enabled: false
+  allowedOrigins: ["https://*", "http://*"]
+  allowedMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
+  allowedHeaders: ["Accept", "Authorization", "Content-Type", "X-CSRF-Token"]
+  exposedHeaders: ["Link"]
+  allowCredentials: false
+  maxAge: 300
+
+clam:
+  network: unix
+  address: /tmp/clamd.sock
+  minWorkers: 10
+  maxWorkers: 50
+  connectMaxRetries: 10
+  connectRetryInterval: 2s
+  connectTimeout: 10s
+  readTimeout: 60s
+  writeTimeout: 60s
+  streamChunkSize: 2048
+  heartbeatInterval: 10s

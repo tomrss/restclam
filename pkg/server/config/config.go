@@ -2,177 +2,87 @@
 package config
 
 import (
+	"bytes"
+	_ "embed"
 	"errors"
 	"strings"
 	"time"
 
+	// TODO consider dropping viper and write it manually
 	"github.com/spf13/viper"
 )
 
+//go:embed defaults.yaml
+var configDefaults []byte
+
 // ServerConfig is the configuration of the server.
 type ServerConfig struct {
-	Host            string
-	Port            int
-	WriteTimeout    time.Duration
-	ReadTimeout     time.Duration
-	IdleTimeout     time.Duration
-	ShutdownTimeout time.Duration
-}
-
-func loadServerConfig(v *viper.Viper) ServerConfig {
-	v.SetDefault("server.host", "0.0.0.0")
-	v.SetDefault("server.port", 8080)
-	v.SetDefault("server.writeTimeout", 15*time.Second)
-	v.SetDefault("server.readTimeout", 15*time.Second)
-	v.SetDefault("server.idleTimeout", 60*time.Second)
-	v.SetDefault("server.shutdownTimeout", 30*time.Second)
-
-	return ServerConfig{
-		Host:            v.GetString("server.host"),
-		Port:            v.GetInt("server.port"),
-		WriteTimeout:    v.GetDuration("server.writeTimeout"),
-		ReadTimeout:     v.GetDuration("server.readTimeout"),
-		IdleTimeout:     v.GetDuration("server.idleTimeout"),
-		ShutdownTimeout: v.GetDuration("server.shutdownTimeout"),
-	}
+	Host            string        `mapstructure:"host"`
+	Port            int           `mapstructure:"port"`
+	WriteTimeout    time.Duration `mapstructure:"writeTimeout"`
+	ReadTimeout     time.Duration `mapstructure:"readTimeout"`
+	IdleTimeout     time.Duration `mapstructure:"idleTimeout"`
+	ShutdownTimeout time.Duration `mapstructure:"shutdownTimeout"`
 }
 
 // LogConfig is the configuration of logging.
 type LogConfig struct {
-	Level       string
-	JSON        bool
-	Concise     bool
-	LogRequests bool
-}
-
-func loadLogConfig(v *viper.Viper) LogConfig {
-	v.SetDefault("log.level", "info")
-	v.SetDefault("log.json", false)
-	v.SetDefault("log.concise", true)
-	v.SetDefault("log.logRequests", false)
-
-	return LogConfig{
-		Level:       v.GetString("log.level"),
-		JSON:        v.GetBool("log.json"),
-		Concise:     v.GetBool("log.concise"),
-		LogRequests: v.GetBool("log.logRequests"),
-	}
+	Level       string `mapstructure:"level"`
+	JSON        bool   `mapstructure:"jSON"`
+	Concise     bool   `mapstructure:"concise"`
+	LogRequests bool   `mapstructure:"logRequests"`
 }
 
 // CORSConfig is the configuration of CORS.
 type CORSConfig struct {
-	Enabled          bool
-	AllowedOrigins   []string
-	AllowedMethods   []string
-	AllowedHeaders   []string
-	ExposedHeaders   []string
-	AllowCredentials bool
-	MaxAge           int
-}
-
-func loadCORSConfig(v *viper.Viper) CORSConfig {
-	// by default disable cors as it will be probably taken care of by some network component
-	// es api gateway, reverse proxy...
-	v.SetDefault("cors.enabled", false)
-	// defaults reflect the fact that cors will be probably enabled only in local dev
-	v.SetDefault("cors.allowedOrigins", []string{"https://*", "http://*"})
-	v.SetDefault("cors.allowedMethods", []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"})
-	v.SetDefault("cors.allowedHeaders", []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"})
-	v.SetDefault("cors.exposedHeaders", []string{"Link"})
-	v.SetDefault("cors.allowCredentials", false)
-	v.SetDefault("cors.maxAge", 300)
-
-	return CORSConfig{
-		Enabled:          v.GetBool("cors.enabled"),
-		AllowedOrigins:   v.GetStringSlice("cors.allowedOrigins"),
-		AllowedMethods:   v.GetStringSlice("cors.allowedMethods"),
-		AllowedHeaders:   v.GetStringSlice("cors.allowedHeaders"),
-		ExposedHeaders:   v.GetStringSlice("cors.exposedHeaders"),
-		AllowCredentials: v.GetBool("cors.allowCredentials"),
-		MaxAge:           v.GetInt("cors.maxAge"),
-	}
+	Enabled          bool     `mapstructure:"enabled"`
+	AllowedOrigins   []string `mapstructure:"allowedOrigins"`
+	AllowedMethods   []string `mapstructure:"allowedMethods"`
+	AllowedHeaders   []string `mapstructure:"allowedHeaders"`
+	ExposedHeaders   []string `mapstructure:"exposedHeaders"`
+	AllowCredentials bool     `mapstructure:"allowCredentials"`
+	MaxAge           int      `mapstructure:"maxAge"`
 }
 
 // ClamConfig is the configuration of ClamAV.
 type ClamConfig struct {
-	Network              string
-	Address              string
-	MinWorkers           int
-	MaxWorkers           int
-	ConnectMaxRetries    int
-	ConnectRetryInterval time.Duration
-	ConnectTimeout       time.Duration
-	ReadTimeout          time.Duration
-	WriteTimeout         time.Duration
-	StreamChunkSize      int
-	HeartbeatInterval    time.Duration
-}
-
-func loadClamConfig(v *viper.Viper) ClamConfig {
-	v.SetDefault("clam.network", "unix")
-	v.SetDefault("clam.address", "/tmp/clamd.sock")
-	v.SetDefault("clam.minWorkers", 10)
-	v.SetDefault("clam.maxWorkers", 50)
-	v.SetDefault("clam.connectMaxRetries", 10)
-	v.SetDefault("clam.connectRetryInterval", 2*time.Second)
-	v.SetDefault("clam.connectTimeout", 10*time.Second)
-	v.SetDefault("clam.readTimeout", 60*time.Second)
-	v.SetDefault("clam.writeTimeout", 60*time.Second)
-	v.SetDefault("clam.streamChunkSize", 2048)
-	v.SetDefault("clam.heartbeatInterval", 10*time.Second)
-
-	return ClamConfig{
-		Network:              v.GetString("clam.network"),
-		Address:              v.GetString("clam.address"),
-		MinWorkers:           v.GetInt("clam.minWorkers"),
-		MaxWorkers:           v.GetInt("clam.maxWorkers"),
-		ConnectMaxRetries:    v.GetInt("clam.connectMaxRetries"),
-		ConnectRetryInterval: v.GetDuration("clam.connectRetryInterval"),
-		ConnectTimeout:       v.GetDuration("clam.connectTimeout"),
-		ReadTimeout:          v.GetDuration("clam.readTimeout"),
-		WriteTimeout:         v.GetDuration("clam.writeTimeout"),
-		StreamChunkSize:      v.GetInt("clam.streamChunkSize"),
-		HeartbeatInterval:    v.GetDuration("clam.heartbeatInterval"),
-	}
+	Network              string        `mapstructure:"network"`
+	Address              string        `mapstructure:"address"`
+	MinWorkers           int           `mapstructure:"minWorkers"`
+	MaxWorkers           int           `mapstructure:"maxWorkers"`
+	ConnectMaxRetries    int           `mapstructure:"connectMaxRetries"`
+	ConnectRetryInterval time.Duration `mapstructure:"connectRetryInterval"`
+	ConnectTimeout       time.Duration `mapstructure:"connectTimeout"`
+	ReadTimeout          time.Duration `mapstructure:"readTimeout"`
+	WriteTimeout         time.Duration `mapstructure:"writeTimeout"`
+	StreamChunkSize      int           `mapstructure:"streamChunkSize"`
+	HeartbeatInterval    time.Duration `mapstructure:"heartbeatInterval"`
 }
 
 // FeatureFlags control switchin on/off experimental features
 type FeatureFlags struct {
 	//nolint:revive,stylecheck
-	ApiV0 bool
+	ApiV0 bool `mapstructure:"apiV0"`
 	//nolint:revive,stylecheck
-	ApiV1 bool
-}
-
-func loadFeatureFlags(v *viper.Viper) FeatureFlags {
-	v.SetDefault("features.apiV0", "false")
-	v.SetDefault("features.apiV1", "true")
-
-	return FeatureFlags{
-		ApiV0: v.GetBool("features.apiV0"),
-		ApiV1: v.GetBool("features.apiV1"),
-	}
+	ApiV1 bool `mapstructure:"apiV1"`
 }
 
 // AppConfig is the global application configuration.
 type AppConfig struct {
-	Environment  string
-	Server       ServerConfig
-	Log          LogConfig
-	Cors         CORSConfig
-	Clam         ClamConfig
-	FeatureFlags FeatureFlags
+	Environment  string       `mapstructure:"environment"`
+	Server       ServerConfig `mapstructure:"server"`
+	Log          LogConfig    `mapstructure:"log"`
+	Cors         CORSConfig   `mapstructure:"cors"`
+	Clam         ClamConfig   `mapstructure:"clam"`
+	FeatureFlags FeatureFlags `mapstructure:"featureFlags"`
 }
 
-func loadAppConfig(v *viper.Viper) AppConfig {
-	return AppConfig{
-		Environment:  v.GetString("environment"),
-		Server:       loadServerConfig(v),
-		Log:          loadLogConfig(v),
-		Cors:         loadCORSConfig(v),
-		Clam:         loadClamConfig(v),
-		FeatureFlags: loadFeatureFlags(v),
-	}
+type configReader func(v *viper.Viper) error
+
+func readDefaults(v *viper.Viper) error {
+	v.SetConfigType("yaml")
+	// read embedded defaults file
+	return v.ReadConfig(bytes.NewReader(configDefaults))
 }
 
 func readFromFile(v *viper.Viper) error {
@@ -186,7 +96,7 @@ func readFromFile(v *viper.Viper) error {
 
 	// read config
 	var confNotFoundErr viper.ConfigFileNotFoundError
-	if err := v.ReadInConfig(); errors.As(err, &confNotFoundErr) {
+	if err := v.MergeInConfig(); errors.As(err, &confNotFoundErr) {
 		// config file not found; ignore error because properties can still be parsed from env
 		return nil
 	} else if err != nil {
@@ -197,20 +107,32 @@ func readFromFile(v *viper.Viper) error {
 	return nil
 }
 
-func loadConfig(configReader func(v *viper.Viper) error) (AppConfig, error) {
-	v := viper.New()
-	// set parsing from environment variables
-	v.SetEnvPrefix("RESTCLAM")
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-	v.AutomaticEnv()
+func loadConfig(defaultsReader configReader, configReader configReader) (AppConfig, error) {
+	v := viper.NewWithOptions(viper.ExperimentalBindStruct())
 
-	// read config
+	// load defaults
+	if err := defaultsReader(v); err != nil {
+		return AppConfig{}, err
+	}
+
+	// load file config overrides
 	if err := configReader(v); err != nil {
 		return AppConfig{}, err
 	}
 
+	// load environment variables overrides
+	v.SetEnvPrefix("RESTCLAM")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+
+	// unmarshal config into config struct
+	var c AppConfig
+	if err := v.Unmarshal(&c); err != nil {
+		return AppConfig{}, err
+	}
+
 	// TODO validate config! fail fast
-	return loadAppConfig(v), nil
+	return c, nil
 }
 
 // LoadConfig loads the application configuration.
@@ -220,12 +142,12 @@ func loadConfig(configReader func(v *viper.Viper) error) (AppConfig, error) {
 //     a YAML level of object nesting (see the provided DEV config.yaml for an example).
 //   - set an environment variable prefixed by "RESTCLAM_" with the name of the config
 //     property uppercase with dots replaced with underscores (_).
-//     Examples: RESTCLAM_DATABASE_USERNAME=admin, RESTCLAM_HELM_CHART_CACHE_ENABLED=true.
+//     Examples: RESTCLAM_SERVER_PORT=8080, RESTCLAM_CLAM_MINWORKERS=5.
 //
 // The config file will be searched, in order, in this locations:
 //   - /etc/restclam/config.yaml
 //   - $HOME/.restclam/config.yaml
 //   - ./config.yaml
 func LoadConfig() (AppConfig, error) {
-	return loadConfig(readFromFile)
+	return loadConfig(readDefaults, readFromFile)
 }
