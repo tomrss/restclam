@@ -14,7 +14,6 @@ import (
 	"github.com/tomrss/restclam/pkg/server/config"
 )
 
-//nolint:funlen
 func main() {
 	// read configuration
 	conf, err := config.LoadConfig()

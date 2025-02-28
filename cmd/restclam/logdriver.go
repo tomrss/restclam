@@ -16,6 +16,7 @@ type clamdLogDriver struct {
 	logger *zerolog.Logger
 }
 
+//nolint:unused
 func newClamdLogDriver(logger *zerolog.Logger) *clamdLogDriver {
 	return &clamdLogDriver{logger}
 }
