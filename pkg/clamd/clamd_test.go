@@ -7,9 +7,47 @@ import (
 	"testing"
 )
 
+func TestGenericRegex_Session_Pong(t *testing.T) {
+	statusLine := "123: PONG"
+	requestID, reply, err := parseGenericReply(statusLine)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if requestID != 123 {
+		t.Errorf("wrong requestid: %d", requestID)
+	}
+	if reply != "PONG" {
+		t.Errorf("wrong reply: %s", reply)
+	}
+}
+
+func TestGenericRegex_Session_Stats(t *testing.T) {
+	statusLine := `123: POOLS: 1
+
+STATE: VALID PRIMARY
+THREADS: live 1 idle 0 max 12 idle-timeout 30
+QUEUE: 0 items
+STATS 0.000011
+
+MEMSTATS: heap N/A mmap N/A used N/A free N/A releasable N/A pools 1 pools_used 1369.103M pools_total 1369.152M
+END`
+	requestID, reply, err := parseGenericReply(statusLine)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if requestID != 123 {
+		t.Errorf("wrong requestid: %d", requestID)
+	}
+	if !strings.HasPrefix(reply, "POOLS") || !strings.HasSuffix(reply, "END") {
+		t.Errorf("wrong reply: %s", reply)
+	}
+}
+
 func TestScanRegex_OK(t *testing.T) {
 	statusLine := "/my/test/file.txt: OK"
-	res, err := parseScanResult(statusLine)
+	_, res, err := parseScanResult(statusLine)
 	if err != nil {
 		t.Error(err)
 	}
@@ -30,7 +68,7 @@ func TestScanRegex_OK(t *testing.T) {
 
 func TestScanRegex_Found(t *testing.T) {
 	statusLine := "/my/test/file.txt: VIRUSSS FOUND"
-	res, err := parseScanResult(statusLine)
+	_, res, err := parseScanResult(statusLine)
 	if err != nil {
 		t.Error(err)
 	}
@@ -48,7 +86,7 @@ func TestScanRegex_Found(t *testing.T) {
 
 func TestScanRegex_Error(t *testing.T) {
 	statusLine := "/my/test/file.txt: Error: File not found ERROR"
-	res, err := parseScanResult(statusLine)
+	_, res, err := parseScanResult(statusLine)
 	if err != nil {
 		t.Error(err)
 	}
@@ -66,13 +104,13 @@ func TestScanRegex_Error(t *testing.T) {
 
 func TestScanRegex_Session_OK(t *testing.T) {
 	statusLine := "1: /my/test/file.txt: OK"
-	res, err := parseScanResult(statusLine)
+	requestID, res, err := parseScanResult(statusLine)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if res.RequestID != 1 {
-		t.Errorf("wrong res.RequestID: %d", res.RequestID)
+	if requestID != 1 {
+		t.Errorf("wrong res.RequestID: %d", requestID)
 	}
 	if res.FileName != "/my/test/file.txt" {
 		t.Errorf("wrong res.FileName: %s", res.FileName)
@@ -90,13 +128,13 @@ func TestScanRegex_Session_OK(t *testing.T) {
 
 func TestScanRegex_Session_Found(t *testing.T) {
 	statusLine := "2: /my/test/file.txt: VIRUSSS FOUND"
-	res, err := parseScanResult(statusLine)
+	requestID, res, err := parseScanResult(statusLine)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if res.RequestID != 2 {
-		t.Errorf("wrong res.RequestID: %d", res.RequestID)
+	if requestID != 2 {
+		t.Errorf("wrong res.RequestID: %d", requestID)
 	}
 	if res.FileName != "/my/test/file.txt" {
 		t.Errorf("wrong res.FileName: %s", res.FileName)
@@ -111,13 +149,13 @@ func TestScanRegex_Session_Found(t *testing.T) {
 
 func TestScanRegex_Session_Error(t *testing.T) {
 	statusLine := "123: /my/test/file.txt: Error: File not found ERROR"
-	res, err := parseScanResult(statusLine)
+	requestID, res, err := parseScanResult(statusLine)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if res.RequestID != 123 {
-		t.Errorf("wrong res.RequestID: %d", res.RequestID)
+	if requestID != 123 {
+		t.Errorf("wrong res.RequestID: %d", requestID)
 	}
 	if res.FileName != "/my/test/file.txt" {
 		t.Errorf("wrong res.FileName: %s", res.FileName)
@@ -135,7 +173,7 @@ func TestPing(t *testing.T) {
 		t.Error(err)
 	}
 
-	pong, err := c.Ping()
+	_, pong, err := c.Ping()
 	if err != nil {
 		t.Error(err)
 	}
@@ -150,7 +188,7 @@ func TestVersion(t *testing.T) {
 		t.Error(err)
 	}
 
-	version, err := c.Version()
+	_, version, err := c.Version()
 	if err != nil {
 		t.Error(err)
 	}
@@ -165,7 +203,7 @@ func TestStats(t *testing.T) {
 		t.Error(err)
 	}
 
-	stats, err := c.Stats()
+	_, stats, err := c.Stats()
 	if err != nil {
 		t.Error(err)
 	}
@@ -195,7 +233,7 @@ func TestScan(t *testing.T) {
 		t.Error(err)
 	}
 
-	scan, err := c.Scan(fileToScan.Name())
+	_, scan, err := c.Scan(fileToScan.Name())
 	if err != nil {
 		t.Error(err)
 	}
@@ -223,7 +261,7 @@ func TestInstream(t *testing.T) {
 		t.Error(err)
 	}
 
-	scan, err := c.Instream(r)
+	_, scan, err := c.Instream(r)
 	if err != nil {
 		t.Error(err)
 	}
@@ -251,7 +289,7 @@ func TestInstream_Virus(t *testing.T) {
 		t.Error(err)
 	}
 
-	scan, err := c.Instream(r)
+	_, scan, err := c.Instream(r)
 	if err != nil {
 		t.Error(err)
 	}

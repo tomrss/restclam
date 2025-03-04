@@ -3,7 +3,6 @@ package clamd
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"testing"
 )
@@ -16,26 +15,23 @@ func TestSession_6InStream(t *testing.T) {
 	r5 := strings.NewReader("File 5 is cleannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn")
 	r6 := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
 
-	s, err := OpenSession(SessionOpts{
-		Network: "unix",
-		Address: "/tmp/clamd.sock",
-	})
+	s, err := OpenSession("unix", "/tmp/clamd.sock")
 	if err != nil {
 		t.Error(err)
 	}
 
 	defer s.Close()
 
-	scan1, err1 := s.Instream(r1)
-	scan2, err2 := s.Instream(r2)
-	scan3, err3 := s.Instream(r3)
+	_, scan1, err1 := s.Instream(r1)
+	_, scan2, err2 := s.Instream(r2)
+	_, scan3, err3 := s.Instream(r3)
 
 	// TODO remove this, just to test the keepalive
 	// time.Sleep(6 * time.Second)
 
-	scan4, err4 := s.Instream(r4)
-	scan5, err5 := s.Instream(r5)
-	scan6, err6 := s.Instream(r6)
+	_, scan4, err4 := s.Instream(r4)
+	_, scan5, err5 := s.Instream(r5)
+	_, scan6, err6 := s.Instream(r6)
 
 	if err1 != nil {
 		t.Error(err1)
@@ -90,10 +86,7 @@ func TestSession_6InStream(t *testing.T) {
 }
 
 func TestSession_Mix1(t *testing.T) {
-	s, err := OpenSession(SessionOpts{
-		Network: "unix",
-		Address: "/tmp/clamd.sock",
-	})
+	s, err := OpenSession("unix", "/tmp/clamd.sock")
 	if err != nil {
 		t.Error(err)
 	}
@@ -112,17 +105,17 @@ func TestSession_Mix1(t *testing.T) {
 	defer os.Remove(f8)
 
 	// do some operations in the session
-	scan1, err1 := s.Instream(r1)
-	scan2, err2 := s.Instream(r2)
-	scan3, err3 := s.Instream(r3)
-	scan7, err7 := s.Scan(f7)
-	scan4, err4 := s.Instream(r4)
-	stats, errstat := s.Stats()
-	scanERR, errERR := s.Scan("notexisssssssstttt_______")
-	scan5, err5 := s.Instream(r5)
-	scan6, err6 := s.Instream(r6)
-	v, errv := s.Version()
-	scan8, err8 := s.Scan(f8)
+	_, scan1, err1 := s.Instream(r1)
+	_, scan2, err2 := s.Instream(r2)
+	_, scan3, err3 := s.Instream(r3)
+	_, scan7, err7 := s.Scan(f7)
+	_, scan4, err4 := s.Instream(r4)
+	_, stats, errstat := s.Stats()
+	_, scanERR, errERR := s.Scan("notexisssssssstttt_______")
+	_, scan5, err5 := s.Instream(r5)
+	_, scan6, err6 := s.Instream(r6)
+	_, v, errv := s.Version()
+	_, scan8, err8 := s.Scan(f8)
 
 	if err1 != nil {
 		t.Error(err1)
@@ -198,10 +191,10 @@ func TestSession_Mix1(t *testing.T) {
 	if scan8.Status != StatusOK {
 		t.Errorf("Expected status OK, got %s", scan8.Status)
 	}
-	if match, _ := regexp.MatchString("^[0-9]+: ClamAV 1\\..*$", v); !match {
-		t.Errorf("Expected version *ClamAV 1.*, got %s", scan8.Status)
+	if !strings.HasPrefix(v, "ClamAV 1.") {
+		t.Errorf("Expected version ClamAV 1.*, got %s", v)
 	}
-	if match, _ := regexp.MatchString("(?s)^[0-9]+: POOLS.*END$", stats); !match {
+	if !strings.HasPrefix(stats, "POOLS") || !strings.HasSuffix(stats, "END") {
 		t.Errorf("Invalid stats: %s", stats)
 	}
 	if scanERR.Status != StatusError {

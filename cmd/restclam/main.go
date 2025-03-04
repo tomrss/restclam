@@ -54,7 +54,6 @@ func main() {
 
 	// init clamd client v1 and register apiv1
 	if conf.FeatureFlags.ApiV1 {
-		logger.Debug().Int("bleb", conf.Clam.MinWorkers).Msg("blub")
 		coordinator, err := runCoordinator(conf.Clam, logger)
 		if err != nil {
 			logger.Fatal().Err(err).Msg("unable to init clamd session coordinator")
@@ -111,24 +110,26 @@ func runCoordinator(c config.ClamConfig, _ zerolog.Logger) (*clamd.Coordinator, 
 		Autoscale:       false,
 		ShutdownTimeout: 10 * time.Second,
 	}
-	err := coord.InitCoordinator(clamd.SessionOpts{
-		Opts: clamd.Opts{
+	err := coord.InitCoordinator(
+		&clamd.Clamd{
+			Network:         c.Network,
+			Address:         c.Address,
 			ConnectTimeout:  c.ConnectTimeout,
 			ReadTimeout:     c.ReadTimeout,
 			WriteTimeout:    c.WriteTimeout,
 			StreamChunkSize: c.StreamChunkSize,
 		},
-		Network:           c.Network,
-		Address:           c.Address,
-		HeartbeatInterval: c.HeartbeatInterval,
-		ConnectRetries: clamd.RetryOpts{
-			MaxRetries: c.ConnectMaxRetries,
-			Backoff: func(retryCount int) time.Duration {
-				// linear backoff (TODO make algorithm configurable)
-				return time.Duration(retryCount) * c.ConnectRetryInterval
+		clamd.SessionOpts{
+			HeartbeatInterval: c.HeartbeatInterval,
+			ConnectRetries: clamd.RetryOpts{
+				MaxRetries: c.ConnectMaxRetries,
+				Backoff: func(retryCount int) time.Duration {
+					// linear backoff (TODO make algorithm configurable)
+					return time.Duration(retryCount) * c.ConnectRetryInterval
+				},
 			},
 		},
-	})
+	)
 	if err != nil {
 		return nil, err
 	}

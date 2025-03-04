@@ -3,20 +3,19 @@ package clamd
 import (
 	"fmt"
 	"io"
-	"regexp"
 	"time"
 )
 
+const (
+	defaultHeartbeatInterval time.Duration = 10 * time.Second
+)
+
 type Session struct {
-	opts  SessionOpts
-	clamd *Clamd
+	opts SessionOpts
+	conn *Connection
 }
 
 type SessionOpts struct {
-	Opts
-
-	Network           string
-	Address           string
 	HeartbeatInterval time.Duration
 	ConnectRetries    RetryOpts
 	CommandRetries    RetryOpts
@@ -27,15 +26,34 @@ type RetryOpts struct {
 	Backoff    func(retryCount int) time.Duration
 }
 
-func OpenSession(opts SessionOpts) (*Session, error) {
+func OpenSession(network string, address string) (*Session, error) {
+	return OpenSessionForClamd(&Clamd{
+		Network:         network,
+		Address:         address,
+		ConnectTimeout:  defaultConnectTimeout,
+		ReadTimeout:     defaultReadTimeout,
+		WriteTimeout:    defaultWriteTimeout,
+		StreamChunkSize: defaultStreamChunkSize,
+	})
+}
+
+func OpenSessionForClamd(c *Clamd) (*Session, error) {
+	return OpenSessionWithOpts(c, SessionOpts{
+		HeartbeatInterval: defaultHeartbeatInterval,
+		ConnectRetries:    RetryOpts{0, nil},
+		CommandRetries:    RetryOpts{0, nil},
+	})
+}
+
+func OpenSessionWithOpts(c *Clamd, opts SessionOpts) (*Session, error) {
 	s := &Session{opts: opts}
 
-	err := s.connectClamd()
+	err := s.connectClamd(c)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.clamd.Idsession(); err != nil {
+	if err := s.conn.Idsession(); err != nil {
 		return nil, fmt.Errorf("unable to open session: %w", err)
 	}
 
@@ -43,46 +61,46 @@ func OpenSession(opts SessionOpts) (*Session, error) {
 }
 
 func (s *Session) Close() error {
-	if s.clamd == nil {
+	if s.conn == nil {
 		return nil
 	}
 
-	err := s.clamd.End()
+	err := s.conn.End()
 	if err != nil {
 		return fmt.Errorf("unable to end clamd session: %w", err)
 	}
 
-	if err := s.clamd.Close(); err != nil {
+	if err := s.conn.Close(); err != nil {
 		return fmt.Errorf("unable to close clamd connection: %w", err)
 	}
 
-	s.clamd = nil
+	s.conn = nil
 	return nil
 }
 
 // delegate command methods
 
-func (s *Session) Ping() (string, error) {
-	return s.clamd.Ping()
+func (s *Session) Ping() (int, string, error) {
+	return s.conn.Ping()
 }
 
-func (s *Session) Version() (string, error) {
-	return s.clamd.Version()
+func (s *Session) Version() (int, string, error) {
+	return s.conn.Version()
 }
 
-func (s *Session) Stats() (string, error) {
-	return s.clamd.Stats()
+func (s *Session) Stats() (int, string, error) {
+	return s.conn.Stats()
 }
 
-func (s *Session) Scan(path string) (*ScanResult, error) {
-	return s.clamd.Scan(path)
+func (s *Session) Scan(path string) (int, *ScanResult, error) {
+	return s.conn.Scan(path)
 }
 
-func (s *Session) Instream(r io.Reader) (*ScanResult, error) {
-	return s.clamd.Instream(r)
+func (s *Session) Instream(r io.Reader) (int, *ScanResult, error) {
+	return s.conn.Instream(r)
 }
 
-func (s *Session) connectClamd() error {
+func (s *Session) connectClamd(c *Clamd) error {
 	maxRetries := s.opts.ConnectRetries.MaxRetries
 	if maxRetries == 0 {
 		maxRetries = 1
@@ -90,9 +108,9 @@ func (s *Session) connectClamd() error {
 
 	var lastErr error
 	for retry := range maxRetries {
-		clamd, err := ConnectWithOpts(s.opts.Network, s.opts.Address, s.opts.Opts)
+		conn, err := c.Connect()
 		if err == nil {
-			s.clamd = clamd
+			s.conn = conn
 			return nil
 		}
 
@@ -106,15 +124,15 @@ func (s *Session) connectClamd() error {
 }
 
 // heartbeat keeps a session alive with a PING command
-func (s *Session) heartbeat() error {
-	pong, err := s.clamd.Ping()
+func (s *Session) heartbeat() (int, error) {
+	requestID, pong, err := s.conn.Ping()
 	if err != nil {
-		return fmt.Errorf("unable to keep alive session: %w", err)
+		return -1, fmt.Errorf("unable to keep alive session: %w", err)
 	}
-	if match, _ := regexp.MatchString("^[0-9]*:?\\s*PONG", pong); !match {
-		return fmt.Errorf("%w: invalid PING response: %s", err, pong)
+	if pong != "PONG" {
+		return requestID, fmt.Errorf("%w: invalid PING response: %s", err, pong)
 	}
 
 	// everything ok
-	return nil
+	return requestID, nil
 }

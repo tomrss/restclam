@@ -20,13 +20,13 @@ type Coordinator struct {
 	activeWorkers sync.WaitGroup
 }
 
-func (c *Coordinator) InitCoordinator(opts SessionOpts) error {
+func (c *Coordinator) InitCoordinator(clamd *Clamd, opts SessionOpts) error {
 	c.workerID = newSequence(1)
 	c.jobID = newSequence(1)
 	c.jobs = make(chan job, c.MaxWorkers)
 
 	for range c.MinWorkers {
-		go c.spawnWorker(opts)
+		go c.spawnWorker(clamd, opts)
 	}
 
 	return nil
@@ -55,12 +55,12 @@ func (c *Coordinator) Shutdown() {
 	}
 }
 
-func (c *Coordinator) spawnWorker(opts SessionOpts) {
+func (c *Coordinator) spawnWorker(clamd *Clamd, opts SessionOpts) {
 	c.activeWorkers.Add(1)
 	defer c.activeWorkers.Done()
 
 	w := sessionWorker{c.workerID.next()}
-	if err := w.run(opts, c.jobs); err != nil {
+	if err := w.run(clamd, opts, c.jobs); err != nil {
 		// TODO spawn another worker!
 		panic(fmt.Errorf("[worker %d] died: %w", w.id, err))
 	}
@@ -88,19 +88,22 @@ func (c *Coordinator) simpleCommand(cmd func(s *Session) (string, error)) (strin
 
 func (c *Coordinator) Ping() (string, error) {
 	return c.simpleCommand(func(s *Session) (string, error) {
-		return s.Ping()
+		_, pong, err := s.Ping()
+		return pong, err
 	})
 }
 
 func (c *Coordinator) Version() (string, error) {
 	return c.simpleCommand(func(s *Session) (string, error) {
-		return s.Version()
+		_, version, err := s.Version()
+		return version, err
 	})
 }
 
 func (c *Coordinator) Stats() (string, error) {
 	return c.simpleCommand(func(s *Session) (string, error) {
-		return s.Stats()
+		_, stats, err := s.Stats()
+		return stats, err
 	})
 }
 
@@ -110,7 +113,7 @@ func (c *Coordinator) Scan(path string) (*ScanResult, error) {
 	c.jobs <- job{
 		ID: jobID,
 		Fun: func(s *Session) jobOutput {
-			scan, err := s.Scan(path)
+			_, scan, err := s.Scan(path)
 			return jobOutput{
 				JobID:      jobID,
 				ScanResult: scan,
@@ -129,7 +132,7 @@ func (c *Coordinator) Instream(r io.Reader) (*ScanResult, error) {
 	c.jobs <- job{
 		ID: jobID,
 		Fun: func(s *Session) jobOutput {
-			scan, err := s.Instream(r)
+			_, scan, err := s.Instream(r)
 			return jobOutput{
 				JobID:      jobID,
 				ScanResult: scan,
@@ -179,13 +182,13 @@ type job struct {
 	RespChan chan<- jobOutput
 }
 
-func (w *sessionWorker) run(sessionOpts SessionOpts, jobs chan job) error {
-	s, err := OpenSession(sessionOpts)
+func (w *sessionWorker) run(clamd *Clamd, opts SessionOpts, jobs chan job) error {
+	s, err := OpenSessionWithOpts(clamd, opts)
 	if err != nil {
 		return err
 	}
 
-	heartbeatTicker := time.NewTicker(sessionOpts.HeartbeatInterval)
+	heartbeatTicker := time.NewTicker(opts.HeartbeatInterval)
 
 	defer func() {
 		heartbeatTicker.Stop()
@@ -196,7 +199,7 @@ func (w *sessionWorker) run(sessionOpts SessionOpts, jobs chan job) error {
 	for {
 		select {
 		case <-heartbeatTicker.C:
-			if err := s.heartbeat(); err != nil {
+			if _, err := s.heartbeat(); err != nil {
 				// this worker died
 				return fmt.Errorf("[worker %d] missed heartbeat: %w", w.id, err)
 			}

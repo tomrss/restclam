@@ -41,3 +41,8 @@ clam:
   writeTimeout: 60s
   streamChunkSize: 2048
   heartbeatInterval: 10s
+
+featureFlags:
+  apiV0: false
+  apiV1: true
+

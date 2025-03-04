@@ -3,7 +3,6 @@ package clamd
 import (
 	"fmt"
 	"os"
-	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -17,27 +16,23 @@ func TestCoordinator_6InStream(t *testing.T) {
 	r5 := strings.NewReader("File 5 is cleannnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn")
 	r6 := strings.NewReader("X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*")
 
-	s, err := OpenSession(SessionOpts{
-		Network:           "unix",
-		Address:           "/tmp/clamd.sock",
-		HeartbeatInterval: 500 * time.Millisecond,
-	})
+	s, err := OpenSession("unix", "/tmp/clamd.sock")
 	if err != nil {
 		t.Error(err)
 	}
 
 	defer s.Close()
 
-	scan1, err1 := s.Instream(r1)
-	scan2, err2 := s.Instream(r2)
-	scan3, err3 := s.Instream(r3)
+	_, scan1, err1 := s.Instream(r1)
+	_, scan2, err2 := s.Instream(r2)
+	_, scan3, err3 := s.Instream(r3)
 
 	// TODO remove this, just to test the keepalive
 	// time.Sleep(6 * time.Second)
 
-	scan4, err4 := s.Instream(r4)
-	scan5, err5 := s.Instream(r5)
-	scan6, err6 := s.Instream(r6)
+	_, scan4, err4 := s.Instream(r4)
+	_, scan5, err5 := s.Instream(r5)
+	_, scan6, err6 := s.Instream(r6)
 
 	if err1 != nil {
 		t.Error(err1)
@@ -97,11 +92,16 @@ func TestCoordinator_Mix1(t *testing.T) {
 		MaxWorkers: 5,
 		Autoscale:  false,
 	}
-	if err := c.InitCoordinator(SessionOpts{
-		Network:           "unix",
-		Address:           "/tmp/clamd.sock",
-		HeartbeatInterval: 500 * time.Millisecond,
-	}); err != nil {
+	err := c.InitCoordinator(
+		&Clamd{
+			Network: "unix",
+			Address: "/tmp/clamd.sock",
+		},
+		SessionOpts{
+			HeartbeatInterval: 500 * time.Millisecond,
+		},
+	)
+	if err != nil {
 		t.Errorf("err coord %v", err)
 		t.FailNow()
 	}
@@ -206,10 +206,10 @@ func TestCoordinator_Mix1(t *testing.T) {
 	if scan8.Status != StatusOK {
 		t.Errorf("Expected status OK, got %s", scan8.Status)
 	}
-	if match, _ := regexp.MatchString("^[0-9]+: ClamAV 1\\..*$", v); !match {
-		t.Errorf("Expected version *ClamAV 1.*, got %s", scan8.Status)
+	if !strings.HasPrefix(v, "ClamAV 1.") {
+		t.Errorf("Expected version ClamAV 1.*, got %s", v)
 	}
-	if match, _ := regexp.MatchString("(?s)^[0-9]+: POOLS.*END$", stats); !match {
+	if !strings.HasPrefix(stats, "POOLS") || !strings.HasSuffix(stats, "END") {
 		t.Errorf("Invalid stats: %s", stats)
 	}
 	if scanERR.Status != StatusError {

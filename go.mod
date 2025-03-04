@@ -9,7 +9,6 @@ require (
 	github.com/rs/zerolog v1.33.0
 	github.com/spf13/viper v1.20.0-alpha.6.0.20250218150643-9c07e0f0633c
 	github.com/stretchr/testify v1.10.0
-	google.golang.org/grpc v1.67.3
 )
 
 require (
@@ -28,10 +27,7 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
-	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241223144023-3abc09e42ca8 // indirect
-	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

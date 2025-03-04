@@ -100,7 +100,7 @@ server:
 	assert.Equal(t, "warn", config.Log.Level, "Log level")
 	assert.Equal(t, "127.0.0.1", config.Server.Host, "Server host")
 	assert.Equal(t, 7070, config.Server.Port, "Server port")
-	assert.Equal(t, 12 * time.Second, config.Clam.HeartbeatInterval, "Heartbeat interval")
+	assert.Equal(t, 12*time.Second, config.Clam.HeartbeatInterval, "Heartbeat interval")
 }
 
 // helpers
