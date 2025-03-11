@@ -14,19 +14,22 @@ type Coordinator struct {
 	Autoscale       bool
 	ShutdownTimeout time.Duration
 
+	backends      []Clamd
 	workerID      sequence
 	jobID         sequence
 	jobs          chan job
 	activeWorkers sync.WaitGroup
 }
 
-func (c *Coordinator) InitCoordinator(clamd *Clamd, opts SessionOpts) error {
+func (c *Coordinator) InitCoordinator(backends []Clamd, opts SessionOpts) error {
 	c.workerID = newSequence(1)
 	c.jobID = newSequence(1)
 	c.jobs = make(chan job, c.MaxWorkers)
+	c.backends = backends
 
-	for range c.MinWorkers {
-		go c.spawnWorker(clamd, opts)
+	numBackends := len(backends)
+	for i := range c.MinWorkers {
+		go c.spawnWorker(&backends[i%numBackends], opts)
 	}
 
 	return nil

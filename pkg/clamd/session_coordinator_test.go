@@ -87,16 +87,23 @@ func TestCoordinator_6InStream(t *testing.T) {
 }
 
 func TestCoordinator_Mix1(t *testing.T) {
+	clamdAddresses := []string{
+		"127.0.0.1:6650",
+		"127.0.0.1:6651",
+		"127.0.0.1:6652",
+	}
 	c := Coordinator{
 		MinWorkers: 5,
 		MaxWorkers: 5,
 		Autoscale:  false,
 	}
+	clamdBackends := make([]Clamd, 0)
+	for _, addr := range clamdAddresses {
+		clamdBackends = append(clamdBackends, Clamd{Network: "tcp", Address: addr})
+	}
+
 	err := c.InitCoordinator(
-		&Clamd{
-			Network: "unix",
-			Address: "/tmp/clamd.sock",
-		},
+		clamdBackends,
 		SessionOpts{
 			HeartbeatInterval: 500 * time.Millisecond,
 		},

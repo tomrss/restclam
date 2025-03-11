@@ -111,14 +111,14 @@ func runCoordinator(c config.ClamConfig, _ zerolog.Logger) (*clamd.Coordinator, 
 		ShutdownTimeout: 10 * time.Second,
 	}
 	err := coord.InitCoordinator(
-		&clamd.Clamd{
+		[]clamd.Clamd{{
 			Network:         c.Network,
 			Address:         c.Address,
 			ConnectTimeout:  c.ConnectTimeout,
 			ReadTimeout:     c.ReadTimeout,
 			WriteTimeout:    c.WriteTimeout,
 			StreamChunkSize: c.StreamChunkSize,
-		},
+		}},
 		clamd.SessionOpts{
 			HeartbeatInterval: c.HeartbeatInterval,
 			ConnectRetries: clamd.RetryOpts{
